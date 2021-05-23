@@ -55,16 +55,28 @@ static constexpr uint8_t MPU9250_WHOAMI_DEFAULT_VALUE {0x71};
 static constexpr uint8_t MPU9255_WHOAMI_DEFAULT_VALUE {0x73};
 static constexpr uint8_t MPU6500_WHOAMI_DEFAULT_VALUE {0x70};
 
+// struct MPU9250Setting {
+//     ACCEL_FS_SEL accel_fs_sel {ACCEL_FS_SEL::A16G};
+//     GYRO_FS_SEL gyro_fs_sel {GYRO_FS_SEL::G2000DPS};
+//     MAG_OUTPUT_BITS mag_output_bits {MAG_OUTPUT_BITS::M16BITS};
+//     FIFO_SAMPLE_RATE fifo_sample_rate {FIFO_SAMPLE_RATE::SMPL_200HZ};
+//     uint8_t gyro_fchoice {0x03};
+//     GYRO_DLPF_CFG gyro_dlpf_cfg {GYRO_DLPF_CFG::DLPF_41HZ};
+//     uint8_t accel_fchoice {0x01};
+//     ACCEL_DLPF_CFG accel_dlpf_cfg {ACCEL_DLPF_CFG::DLPF_45HZ};
+// };
+
 struct MPU9250Setting {
-    ACCEL_FS_SEL accel_fs_sel {ACCEL_FS_SEL::A16G};
-    GYRO_FS_SEL gyro_fs_sel {GYRO_FS_SEL::G2000DPS};
+    ACCEL_FS_SEL accel_fs_sel {ACCEL_FS_SEL::A2G};
+    GYRO_FS_SEL gyro_fs_sel {GYRO_FS_SEL::G250DPS};
     MAG_OUTPUT_BITS mag_output_bits {MAG_OUTPUT_BITS::M16BITS};
     FIFO_SAMPLE_RATE fifo_sample_rate {FIFO_SAMPLE_RATE::SMPL_200HZ};
-    uint8_t gyro_fchoice {0x03};
+    uint8_t gyro_fchoice {0x00};
     GYRO_DLPF_CFG gyro_dlpf_cfg {GYRO_DLPF_CFG::DLPF_41HZ};
-    uint8_t accel_fchoice {0x01};
+    uint8_t accel_fchoice {0x00};
     ACCEL_DLPF_CFG accel_dlpf_cfg {ACCEL_DLPF_CFG::DLPF_45HZ};
 };
+
 
 template <typename WireType>
 class MPU9250_ {
@@ -86,7 +98,9 @@ class MPU9250_ {
     float mag_bias_factory[3] {0., 0., 0.};
     float mag_bias[3] {0., 0., 0.};  // mag calibration value in MAG_OUTPUT_BITS: 16BITS
     float mag_scale[3] {1., 1., 1.};
-    float magnetic_declination = -7.51;  // Japan, 24th June
+    float magnetic_declination = +3.633;  // Italy , 25Th May 2021
+
+    float heading = 0; // quaternion tilt compensated heading 
 
     // Temperature
     int16_t temperature_count {0};  // temperature raw count output
@@ -243,6 +257,9 @@ public:
     float getEulerX() const { return euler[0]; }
     float getEulerY() const { return euler[1]; }
     float getEulerZ() const { return euler[2]; }
+
+    float getHeading() const { return heading; }
+
 
     float getQuaternionX() const { return q[1]; }
     float getQuaternionY() const { return q[2]; }
@@ -431,13 +448,22 @@ private:
         a31 = 2.0f * (qw * qx + qy * qz);
         a32 = 2.0f * (qx * qz - qw * qy);
         a33 = qw * qw - qx * qx - qy * qy + qz * qz;
-        euler[0] = atan2f(a31, a33);
-        euler[1] = -asinf(a32);
-        euler[2] = atan2f(a12, a22);
+
+        euler[0] = atan2f(a31, a33);    // roll
+        euler[1] = -asinf(a32);         // pitch
+        euler[2] = atan2f(a12, a22);    // yaw
+        
         euler[0] *= 180.0f / PI;
         euler[1] *= 180.0f / PI;
         euler[2] *= 180.0f / PI;
+
         euler[2] += magnetic_declination;
+
+        heading = euler[2];
+        if (heading < 0) heading += 360.0;                        // Yaw goes negative between 180 amd 360 degrees
+        if (heading < 0) heading += 360.0;                        // Allow for under|overflow
+        if (heading >= 360) heading -= 360.0;
+        
         if (euler[2] >= +180.f)
             euler[2] -= 360.f;
         else if (euler[2] < -180.f)
