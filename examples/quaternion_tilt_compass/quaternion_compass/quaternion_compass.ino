@@ -1530,6 +1530,12 @@ void refresh_data()
     ax = (float)accelCount[0] * aRes;                   // - accelBias[0];  // get actual g value, this depends on scale being set
     ay = (float)accelCount[1] * aRes;                   // - accelBias[1];
     az = (float)accelCount[2] * aRes;                   // - accelBias[2];
+    // Serial.print(" ax: ");
+    // Serial.print(ax);
+    // Serial.print(" ay: ");
+    // Serial.print(ay);
+    // Serial.print(" az: ");
+    // Serial.print(az);
 
     // ----- Gyro calculations
     readGyroData(gyroCount);                            // Read the gyro registers
@@ -1539,6 +1545,13 @@ void refresh_data()
     gx = (float)gyroCount[0] * gRes; // get actual gyro value, this depends on scale being set
     gy = (float)gyroCount[1] * gRes;
     gz = (float)gyroCount[2] * gRes;
+
+    // Serial.print(" gx: ");
+    // Serial.print(gx);
+    // Serial.print(" gy: ");
+    // Serial.print(gy);
+    // Serial.print(" gz: ");
+    // Serial.print(gz);
 
     // ----- Magnetometer calculations
     readMagData(magCount);                              // Read the magnetometer x|y| registers
@@ -1569,7 +1582,20 @@ void refresh_data()
     /* The above formula is not using the soft-iron scale factors */
     mx = ((float)magCount[0] * mRes * magCalibration[0] - magBias[0]) * magScale[0];    // (rawMagX*ASAX*0.6 - magOffsetX)*scalefactor
     my = ((float)magCount[1] * mRes * magCalibration[1] - magBias[1]) * magScale[1];    // (rawMagY*ASAY*0.6 - magOffsetY)*scalefactor
-    mz = ((float)magCount[2] * mRes * magCalibration[2] - magBias[2]) * magScale[2];    // (rawMagZ*ASAZ*0.6 - magOffsetZ)*scalefactor
+    mz = ((float)magCount[2] * mRes * magCalibration[2] - magBias[2]) * magScale[2];
+    
+    // Serial.print(" magCalibration[0]: ");
+    // Serial.println(magCalibration[0]);
+  
+
+    // Serial.print(" mx: ");
+    // Serial.print(mx);
+    // Serial.print(" my: ");
+    // Serial.print(my);
+    // Serial.print(" mz: ");
+    // Serial.println(mz);  // (rawMagZ*ASAZ*0.6 - magOffsetZ)*scalefactor
+    // Serial.print(" mRes[0]: ");
+    // Serial.println(mRes);
   }
 }
 
@@ -1841,6 +1867,13 @@ void view_heading_LCD()
   pitch *= RAD_TO_DEG;
   roll *= RAD_TO_DEG;
   yaw *= RAD_TO_DEG;
+  
+  Serial.print(" eulerx: ");
+  Serial.print(roll);
+  Serial.print(" eulery: ");
+  Serial.print(pitch);
+  Serial.print(" eulerz: ");
+  Serial.println(yaw); 
 
   // ----- calculate the heading
   /*

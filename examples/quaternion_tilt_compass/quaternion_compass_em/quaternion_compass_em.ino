@@ -265,23 +265,26 @@ void setup()
 
 if (!mpu.setup(0x68, setting)) {  // change to your own address
 #ifdef LCD2
- lcd.clear();
-lcd.setCursor(0, 0);
-lcd.print(F("Error I2C Check"));
-lcd.setCursor(0, 1);
-lcd.print(F("   Connection"));
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print(F("Error I2C Check"));
+  lcd.setCursor(0, 1);
+  lcd.print(F("   Connection"));
 #endif
     
-    while (1) {
-        Serial.println("MPU connection failed. Please check your connection with `connection_check` example.");
-        delay(5000);
-    }
+  while (1) {
+    Serial.println("MPU connection failed. Please check your connection with `connection_check` example.");
+    delay(5000);
+  }
 }
 
 mpu.calibrateAccelGyro();
-mpu.setMagneticDeclination(3.633);
+// mpu.setMagneticDeclination(3.633);
 mpu.setMagBias(Mag_x_offset, Mag_y_offset, Mag_z_offset);
 mpu.setMagScale(Mag_x_scale, Mag_y_scale, Mag_z_scale);
+
+mpu.selectFilter(QuatFilterSel::MAHONYEM);
+
 print_calibration();
 delay(2000);
 
@@ -293,6 +296,25 @@ delay(2000);
 void loop()
 {
   mpu.update();
+
+  // Serial.print(" ax: ");
+  // Serial.print(mpu.getAcc(0));
+  // Serial.print(" ay: ");
+  // Serial.print(mpu.getAcc(1));
+  // Serial.print(" az: ");
+  // Serial.print(mpu.getAcc(2));
+  // Serial.print(" gx: ");
+  // Serial.print(mpu.getGyro(0));
+  // Serial.print(" gy: ");
+  // Serial.print(mpu.getGyro(1));
+  // Serial.print(" gz: ");
+  // Serial.print(mpu.getGyro(2));
+  // Serial.print(" mx: ");
+  // Serial.print(mpu.getMag(0));
+  // Serial.print(" my: ");
+  // Serial.print(mpu.getMag(1));
+  // Serial.print(" mz: ");
+  // Serial.println(mpu.getMag(2));
 
   // ----- Processing Tasks
   switch (TASK) {
@@ -334,181 +356,6 @@ void loop()
   }
 }
 
-// ------------------------
-// compass_rose()
-// ------------------------
-/* View heading using Processing "compass_rose.pde" */
-// void compass_rose()
-// {
-//   // ----- read input character
-//   if (Serial.available()) {
-//     InputChar = Serial.read();
-//     if ((InputChar == 's') || (InputChar == 'S')) {
-//       LinkEstablished = true;
-//     }
-//   }
-
-//   // ----- Calculate the yaw
-//   float yaw = atan2(2.0f * (q[1] * q[2] + q[0] * q[3]), q[0] * q[0] + q[1] * q[1] - q[2] * q[2] - q[3] * q[3]);
-
-//   /*
-//     The normal range for yaw is  +/- 0..179 degrees. Adding 360 to
-//     the negative readings converts the range to 0..360 degrees. The yaw
-//     output is heavily damped but doesn't appear to suffer from pitch or roll.
-//     For all practical purposes the compass yaw and compass heading are the same
-//   */
-
-//   // ----- Convert yaw to compass heading
-//   float heading = yaw * RAD_TO_DEG;
-//   if (heading < 0) heading += 360.0;                  // Yaw goes negative between 180 amd 360 degrees
-//   if (True_North == true) heading += Declination;     // Calculate True North
-//   if (heading < 0) heading += 360.0;                  // Allow for under|overflow
-//   if (heading >= 360) heading -= 360.0;
-
-//   // ------ Create output data string
-//   OutputString = String(heading);
-
-//   // ----- Send string if link established
-//   if (LinkEstablished && ((InputChar == 's') || (InputChar == 'S'))) {
-//     Serial.println(OutputString);
-//   }
-
-//   // ----- send 'S' if link not established
-//   if (micros() > Stop1) {
-//     Stop1 += Timer1;
-//     if (!LinkEstablished) {
-//       Serial.println('S');
-//     }
-//   }
-// }
-
-// ------------------------
-// view_registers_SM()
-// ------------------------
-/* View registers on serial monitor */
-// void view_registers_SM()
-// {
-//   // ----- Print accelerometer values
-//   Serial.print("        Accel(mg)");
-//   print_number((short)(1000 * ax));
-//   print_number((short)(1000 * ay));
-//   print_number((short)(1000 * az));
-
-//   // ----- Print gyro values
-//   Serial.print("        Gyro(dps)");
-//   print_number((short)(gx));
-//   print_number((short)(gy));
-//   print_number((short)(gz));
-
-//   // ----- Print magnetometer values
-//   Serial.print("        Mag(mG)");
-//   print_number((short)(mx));
-//   print_number((short)(my));
-//   print_number((short)(mz));
-
-//   // ----- Print temperature in degrees Centigrade
-//   tempCount = readTempData();  // Read the adc values
-//   temperature = ((float) tempCount) / 333.87 + 21.0; // Temp in degrees C
-//   Serial.print("        Temp(C) ");
-//   Serial.println(temperature, 1);
-// }
-
-// ------------------------
-// view_heading_SM()
-// ------------------------
-/* View heading on serila monitor */
-// void view_heading_SM()
-// {
-//   //    Serial.print("Accel");
-//   //    print_number((short)(1000 * ax));
-//   //    print_number((short)(1000 * ay));
-//   //    print_number((short)(1000 * az));
-
-//   //    Serial.print("        Gyro");
-//   //    print_number((short)(gx));
-//   //    print_number((short)(gy));
-//   //    print_number((short)(gz));
-
-//   //    Serial.print("        Mag");
-//   //    print_number((short)(mx));
-//   //    print_number((short)(my));
-//   //    print_number((short)(mz));
-
-//   //    Serial.print("        q0|qx|qy|qz");
-//   //    print_number(q[0]);
-//   //    print_number(q[1]);
-//   //    print_number(q[2]);
-//   //    print_number(q[3]);
-
-//   /*
-//     Define output variables from updated quaternion---these are Tait-Bryan angles, commonly used in aircraft orientation.
-//     In this coordinate system, the positive z-axis is down toward Earth.
-//     Yaw is the angle between Sensor x-axis and Earth magnetic North (or true North if corrected for local declination, looking down on the sensor positive yaw is counterclockwise.
-//     Pitch is angle between sensor x-axis and Earth ground plane, toward the Earth is positive, up toward the sky is negative.
-//     Roll is angle between sensor y-axis and Earth ground plane, y-axis up is positive roll.
-//     These arise from the definition of the homogeneous rotation matrix constructed from quaternions.
-//     Tait-Bryan angles as well as Euler angles are non-commutative; that is, the get the correct orientation the rotations must be
-//     applied in the correct order which for this configuration is yaw, pitch, and then roll.
-//     For more see http://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles which has additional links.
-//   */
-
-//   pitch = asin(2.0f * (q[1] * q[3] - q[0] * q[2]));
-//   roll  = -atan2(2.0f * (q[0] * q[1] + q[2] * q[3]), q[0] * q[0] - q[1] * q[1] - q[2] * q[2] + q[3] * q[3]);
-//   yaw   = atan2(2.0f * (q[1] * q[2] + q[0] * q[3]), q[0] * q[0] + q[1] * q[1] - q[2] * q[2] - q[3] * q[3]);
-
-//   // ----- convert to degrees
-//   pitch *= RAD_TO_DEG;
-//   roll *= RAD_TO_DEG;
-//   yaw *= RAD_TO_DEG;
-
-//   // ----- calculate the heading
-//   /*
-//      The yaw and compass heading (after the next two lines) track each other 100%
-//   */
-//   float heading = yaw;
-//   if (heading < 0) heading += 360.0;                        // Yaw goes negative between 180 amd 360 degrees
-//   if (True_North == true) heading += Declination;           // Calculate True North
-//   if (heading < 0) heading += 360.0;                        // Allow for under|overflow
-//   if (heading >= 360) heading -= 360.0;
-
-//   // ----- send the results to the Serial Monitor
-//   Serial.print("        Pitch ");
-//   print_number((short)pitch);
-//   Serial.print("        Roll ");
-//   print_number((short)roll);
-//   Serial.print("        Heading ");
-//   print_number((short)heading);
-
-//   // ----- Print temperature in degrees Centigrade
-//   tempCount = readTempData();                               // Read the temperature registers
-//   temperature = ((float) tempCount) / 333.87 + 21.0;        // Temp in degrees C
-//   Serial.print("        Temp(C) ");
-//   Serial.print(temperature, 1);
-  
-//   /*
-//     With these settings the filter is updating at a ~145 Hz rate using the Madgwick scheme and
-//     > 200 Hz using the Mahony scheme even though the display refreshes at only 2 Hz.
-//     The filter update rate is determined mostly by the mathematical steps in the respective algorithms,
-//     the processor speed (8 MHz for the 3.3V Pro Mini), and the magnetometer ODR (output data rate) :
-//     an ODR of 10 Hz for the magnetometer produce the above rates, maximum magnetometer ODR of 100 Hz produces
-//     filter update rates of 36 - 145 and ~38 Hz for the Madgwick and Mahony schemes, respectively.
-//     This is presumably because the magnetometer read takes longer than the gyro or accelerometer reads.
-//     This filter update rate should be fast enough to maintain accurate platform orientation for
-//     stabilization control of a fast - moving robot or quadcopter. Compare to the update rate of 200 Hz
-//     produced by the on - board Digital Motion Processor of Invensense's MPU6050 6 DoF and MPU9150 9DoF sensors.
-//     The 3.3 V 8 MHz Pro Mini is doing pretty well!
-//   */
-
-//   //      Serial.print("        Rate ");
-//   //      print_number((float) sumCount / sum, 2);
-//   //      Serial.print(" Hz");
-
-//   Serial.println("");
-//   count = millis();
-
-//   sumCount = 0;
-//   sum = 0;
-// }
 
 // ------------------------
 // view_heading_LCD()
@@ -520,18 +367,27 @@ void view_heading_LCD()
   // mpu.getHeading()
   // mpu.getTemperature()
   // ----- calculate pitch , roll, and yaw (radians)
-  pitch = mpu.getPitch();
-  roll  = mpu.getRoll();
-  yaw   = mpu.getYaw();
+  
+  // pitch = mpu.getPitch();
+  // roll  = mpu.getRoll();
+  // yaw   = mpu.getYaw();
+
+  float pitch = mpu.getEulerX();
+  float roll  = mpu.getEulerY();
+  float yaw   = mpu.getEulerZ();
+
+
+  // float yaw2 = atan2(2.0f * (mpu.getQuaternionX() * mpu.getQuaternionY() + mpu.getQuaternionW() * mpu.getQuaternionZ()), mpu.getQuaternionW() * mpu.getQuaternionW() + mpu.getQuaternionX() * mpu.getQuaternionX() - mpu.getQuaternionY() * mpu.getQuaternionY() - mpu.getQuaternionW() * mpu.getQuaternionW());
+  float q[4] = {mpu.getQuaternionW(), mpu.getQuaternionX(), mpu.getQuaternionY(), mpu.getQuaternionZ()};
+  float yaw2   = atan2(2.0f * (q[1] * q[2] + q[0] * q[3]), q[0] * q[0] + q[1] * q[1] - q[2] * q[2] - q[3] * q[3]);
 
   /*
      The yaw and compass heading (after the next two lines) track each other 100%
   */
-  float heading = yaw;
+  yaw2 *= 180/3.14;
+  yaw2 += 3.633;
+  float heading = yaw2;
   if (heading < 0) heading += 360.0;                        // Yaw goes negative between 180 amd 360 degrees
-  // if (True_North == true) heading += Declination;           // Calculate True North
-  heading += 3.633;           // Calculate True North
-  if (heading < 0) heading += 360.0;                        // Allow for under|overflow
   if (heading >= 360) heading -= 360.0;
 
   // ----- send the results to the Serial Monitor

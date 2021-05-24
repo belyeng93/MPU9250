@@ -51,6 +51,18 @@ enum class ACCEL_DLPF_CFG : uint8_t {
     DLPF_420HZ,
 };
 
+enum class COORDINATE_REF : uint8_t {
+    NEU,
+    NED,
+    NWU,
+};
+
+enum M_MODE 
+{
+  M_8HZ = 0x02,                 // 8 Hz ODR (output data rate) update
+  M_100HZ = 0x06                // 100 Hz continuous magnetometer
+};
+
 static constexpr uint8_t MPU9250_WHOAMI_DEFAULT_VALUE {0x71};
 static constexpr uint8_t MPU9255_WHOAMI_DEFAULT_VALUE {0x73};
 static constexpr uint8_t MPU6500_WHOAMI_DEFAULT_VALUE {0x70};
@@ -75,6 +87,8 @@ struct MPU9250Setting {
     GYRO_DLPF_CFG gyro_dlpf_cfg {GYRO_DLPF_CFG::DLPF_41HZ};
     uint8_t accel_fchoice {0x00};
     ACCEL_DLPF_CFG accel_dlpf_cfg {ACCEL_DLPF_CFG::DLPF_45HZ};
+    COORDINATE_REF coord_ref_cfg {COORDINATE_REF::NWU};
+    M_MODE m_mode_cfg {M_MODE::M_8HZ};
 };
 
 
@@ -87,7 +101,7 @@ class MPU9250_ {
 
     // settings
     MPU9250Setting setting;
-    static constexpr uint8_t MAG_MODE {0x06};  // 0x02 for 8 Hz, 0x06 for 100 Hz continuous magnetometer data read
+    static constexpr uint8_t MAG_MODE {M_MODE::M_8HZ};  // 0x02 for 8 Hz, 0x06 for 100 Hz continuous magnetometer data read
     float acc_resolution {0.f};                // scale resolutions per LSB for the sensors
     float gyro_resolution {0.f};               // scale resolutions per LSB for the sensors
     float mag_resolution {0.f};                // scale resolutions per LSB for the sensors
@@ -205,11 +219,13 @@ public:
         return (c == AK8963_WHOAMI_DEFAULT_VALUE);
     }
 
-    bool available() {
+    bool available()
+     {
         return has_connected && (read_byte(mpu_i2c_addr, INT_STATUS) & 0x01);
     }
 
-    bool update() {
+    bool update() 
+    {
         if (!available()) return false;
 
         update_accel_gyro();
@@ -222,7 +238,7 @@ public:
         // So to adopt to the general Aircraft coordinate system (Right-Hand, X-Forward, Z-Down),
         // we need to feed (ax, -ay, -az, gx, -gy, -gz, my, -mx, mz)
         // but we pass (-ax, ay, az, gx, -gy, -gz, my, -mx, mz)
-        // because gravity is by convention positive down, we need to ivnert the accel data
+        // because gravity is by convention positive down, we need to invert the accel data
 
         // get quaternion based on aircraft coordinate (Right-Hand, X-Forward, Z-Down)
         // acc[mg], gyro[deg/s], mag [mG]
@@ -230,15 +246,66 @@ public:
         // quat_filter.update(-a[0], a[1], a[2], g[0] * DEG_TO_RAD, -g[1] * DEG_TO_RAD, -g[2] * DEG_TO_RAD, m[1], -m[0], m[2], q);
         // @hideakitai changed for new Madgwick filter calculation, please note that axes has changed from before
 
-        float an = +a[0];
-        float ae = -a[1];
-        float ad = -a[2];
-        float gn = +g[0] * DEG_TO_RAD;
-        float ge = -g[1] * DEG_TO_RAD;
-        float gd = -g[2] * DEG_TO_RAD;
-        float mn = +m[1];
-        float me = -m[0];
-        float md = +m[2];
+        //NED
+        float an = 0.0;
+        float ae = 0.0;
+        float ad = 0.0;
+        float gn = 0.0;
+        float ge = 0.0;
+        float gd = 0.0;
+        float mn = 0.0;
+        float me = 0.0;
+        float md = 0.0;
+        
+        switch (setting.coord_ref_cfg)
+        {
+            case COORDINATE_REF::NED:
+                an = +a[0];
+                ae = -a[1];
+                ad = -a[2];
+                gn = +g[0] * DEG_TO_RAD;
+                ge = -g[1] * DEG_TO_RAD;
+                gd = -g[2] * DEG_TO_RAD;
+                mn = +m[1];
+                me = -m[0];
+                md = +m[2];
+                break;
+            case COORDINATE_REF::NEU:
+                an = +a[0];
+                ae = -a[1];
+                ad = a[2];
+                gn = +g[0] * DEG_TO_RAD;
+                ge = -g[1] * DEG_TO_RAD;
+                gd = g[2] * DEG_TO_RAD;
+                mn = +m[1];
+                me = -m[0];
+                md = -m[2];
+                break;
+            case COORDINATE_REF::NWU:
+                an = -a[0];
+                ae = +a[1];
+                ad = +a[2];
+                gn = +g[0] * DEG_TO_RAD;
+                ge = -g[1] * DEG_TO_RAD;
+                gd = -g[2] * DEG_TO_RAD;
+                mn = +m[1];
+                me = -m[0];
+                md = +m[2];
+                break;
+            default:
+                an = +a[0];
+                ae = -a[1];
+                ad = -a[2];
+                gn = +g[0] * DEG_TO_RAD;
+                ge = -g[1] * DEG_TO_RAD;
+                gd = -g[2] * DEG_TO_RAD;
+                mn = +m[1];
+                me = -m[0];
+                md = +m[2];
+                break;
+        }
+        
+
         quat_filter.update(an, ae, ad, gn, ge, gd, mn, me, md, q);
 
         if (!b_ahrs) {
@@ -304,43 +371,50 @@ public:
 
     float getTemperature() const { return temperature; }
 
-    void setAccBias(const float x, const float y, const float z) {
+    void setAccBias(const float x, const float y, const float z) 
+    {
         acc_bias[0] = x;
         acc_bias[1] = y;
         acc_bias[2] = z;
         write_accel_offset();
     }
-    void setGyroBias(const float x, const float y, const float z) {
+    void setGyroBias(const float x, const float y, const float z) 
+    {
         gyro_bias[0] = x;
         gyro_bias[1] = y;
         gyro_bias[2] = z;
         write_gyro_offset();
     }
-    void setMagBias(const float x, const float y, const float z) {
+    void setMagBias(const float x, const float y, const float z) 
+    {
         mag_bias[0] = x;
         mag_bias[1] = y;
         mag_bias[2] = z;
     }
-    void setMagScale(const float x, const float y, const float z) {
+    void setMagScale(const float x, const float y, const float z) 
+    {
         mag_scale[0] = x;
         mag_scale[1] = y;
         mag_scale[2] = z;
     }
     void setMagneticDeclination(const float d) { magnetic_declination = d; }
 
-    void selectFilter(QuatFilterSel sel) {
+    void selectFilter(QuatFilterSel sel) 
+    {
         quat_filter.select_filter(sel);
     }
 
-    bool selftest() {
+    bool selftest() 
+    {
         return self_test_impl();
     }
 
 private:
-    void initMPU9250() {
-        acc_resolution = get_acc_resolution(setting.accel_fs_sel);
+    void initMPU9250() 
+    {
+        acc_resolution  = get_acc_resolution(setting.accel_fs_sel);
         gyro_resolution = get_gyro_resolution(setting.gyro_fs_sel);
-        mag_resolution = get_mag_resolution(setting.mag_output_bits);
+        mag_resolution  = get_mag_resolution(setting.mag_output_bits);
 
         // wake up device
         write_byte(mpu_i2c_addr, PWR_MGMT_1, 0x00);  // Clear sleep mode bit (6), enable all sensors
@@ -402,7 +476,8 @@ private:
         delay(100);
     }
 
-    void initAK8963() {
+    void initAK8963() 
+    {
         // First extract the factory calibration for each magnetometer axis
         uint8_t raw_data[3];                            // x/y/z gyro calibration data stored here
         write_byte(AK8963_ADDRESS, AK8963_CNTL, 0x00);  // Power down magnetometer
@@ -418,7 +493,7 @@ private:
         // Configure the magnetometer for continuous read and highest resolution
         // set Mscale bit 4 to 1 (0) to enable 16 (14) bit resolution in CNTL register,
         // and enable continuous mode data acquisition MAG_MODE (bits [3:0]), 0010 for 8 Hz and 0110 for 100 Hz sample rates
-        write_byte(AK8963_ADDRESS, AK8963_CNTL, (uint8_t)setting.mag_output_bits << 4 | MAG_MODE);  // Set magnetometer data resolution and sample ODR
+        write_byte(AK8963_ADDRESS, AK8963_CNTL, (uint8_t)setting.mag_output_bits << 4 | setting.m_mode_cfg);  // Set magnetometer data resolution and sample ODR
         delay(10);
 
         if (b_verbose) {
@@ -432,10 +507,11 @@ private:
         }
     }
 
-    void update_euler(float qw, float qx, float qy, float qz) {
+    void update_euler(float qw, float qx, float qy, float qz) 
+    {
         // Define output variables from updated quaternion---these are Tait-Bryan angles, commonly used in aircraft orientation.
         // In this coordinate system, the positive z-axis is down toward Earth.
-        // Yaw is the angle between Sensor x-axis and Earth magnetic North (or true North if corrected for local declination, looking down on the sensor positive yaw is counterclockwise.
+        // Yaw is the angle between Sensor z-axis and Earth magnetic North (or true North if corrected for local declination, looking down on the sensor positive yaw is counterclockwise.
         // Pitch is angle between sensor x-axis and Earth ground plane, toward the Earth is positive, up toward the sky is negative.
         // Roll is angle between sensor y-axis and Earth ground plane, y-axis up is positive roll.
         // These arise from the definition of the homogeneous rotation matrix constructed from quaternions.
@@ -457,11 +533,17 @@ private:
         euler[1] *= 180.0f / PI;
         euler[2] *= 180.0f / PI;
 
+        Serial.print(" eulerx: ");
+        Serial.print(euler[0]);
+        Serial.print(" eulery: ");
+        Serial.print(euler[1]);
+        Serial.print(" eulerz: ");
+        Serial.println(euler[2]); 
+
         euler[2] += magnetic_declination;
 
         heading = euler[2];
         if (heading < 0) heading += 360.0;                        // Yaw goes negative between 180 amd 360 degrees
-        if (heading < 0) heading += 360.0;                        // Allow for under|overflow
         if (heading >= 360) heading -= 360.0;
         
         if (euler[2] >= +180.f)
@@ -469,12 +551,17 @@ private:
         else if (euler[2] < -180.f)
             euler[2] += 360.f;
 
+        // heading = euler[2];
+        // if (heading < 0) heading += 360.0;                        // Yaw goes negative between 180 amd 360 degrees
+        // if (heading >= 360) heading -= 360.0;
+
         lin_acc[0] = a[0] + a31;
         lin_acc[1] = a[1] + a32;
         lin_acc[2] = a[2] - a33;
     }
 
-    void update_accel_gyro() {
+    void update_accel_gyro() 
+    {
         int16_t raw_acc_gyro_data[7];        // used to read all 14 bytes at once from the MPU9250 accel/gyro
         read_accel_gyro(raw_acc_gyro_data);  // INT cleared on any read
 
@@ -492,7 +579,29 @@ private:
         g[2] = (float)raw_acc_gyro_data[6] * gyro_resolution;
     }
 
-    void read_accel_gyro(int16_t* destination) {
+    void update_accel_gyro_em() 
+    {
+        short accelCount[3];                                // Stores the 16-bit signed accelerometer sensor output
+        short gyroCount[3]; 
+        readAccelData(accelCount); 
+        readGyroData(gyroCount); 
+
+        // Now we'll calculate the accleration value into actual g's
+        a[0] = (float)accelCount[0] * acc_resolution;  // get actual g value, this depends on scale being set
+        a[1] = (float)accelCount[1] * acc_resolution;
+        a[2] = (float)accelCount[2] * acc_resolution;
+
+        temperature_count = read_temperature_data();                    // Read the adc values
+        temperature = ((float)temperature_count) / 333.87 + 21.0;  // Temperature in degrees Centigrade
+
+        // Calculate the gyro value into actual degrees per second
+        g[0] = (float)gyroCount[4] * gyro_resolution;  // get actual gyro value, this depends on scale being set
+        g[1] = (float)gyroCount[5] * gyro_resolution;
+        g[2] = (float)gyroCount[6] * gyro_resolution;
+    }
+
+    void read_accel_gyro(int16_t* destination) 
+    {
         uint8_t raw_data[14];                                                 // x/y/z accel register data stored here
         read_bytes(mpu_i2c_addr, ACCEL_XOUT_H, 14, &raw_data[0]);             // Read the 14 raw data registers into data array
         destination[0] = ((int16_t)raw_data[0] << 8) | (int16_t)raw_data[1];  // Turn the MSB and LSB into a signed 16-bit value
@@ -504,7 +613,31 @@ private:
         destination[6] = ((int16_t)raw_data[12] << 8) | (int16_t)raw_data[13];
     }
 
-    void update_mag() {
+    void readAccelData(short * destination)
+    {
+        byte rawData[6];  // x/y/z accel register data stored here
+        read_bytes(mpu_i2c_addr, ACCEL_XOUT_H, 6, &rawData[0]);  // Read the six raw data registers into data array
+        destination[0] = ((short)rawData[0] << 8) | rawData[1] ;  // Turn the MSB and LSB into a signed 16-bit value
+        destination[1] = ((short)rawData[2] << 8) | rawData[3] ;
+        destination[2] = ((short)rawData[4] << 8) | rawData[5] ;
+    }
+
+
+    // -------------------
+    // readGyroData()
+    // -------------------
+    /* Read gyro registers */
+    void readGyroData(short * destination)
+    {
+        byte rawData[6];  // x/y/z gyro register data stored here
+        read_bytes(mpu_i2c_addr, GYRO_XOUT_H, 6, &rawData[0]);  // Read the six raw data registers sequentially into data array
+        destination[0] = ((short)rawData[0] << 8) | rawData[1] ;  // Turn the MSB and LSB into a signed 16-bit value
+        destination[1] = ((short)rawData[2] << 8) | rawData[3] ;
+        destination[2] = ((short)rawData[4] << 8) | rawData[5] ;
+    }
+
+    void update_mag() 
+    {
         int16_t mag_count[3] = {0, 0, 0};  // Stores the 16-bit signed magnetometer sensor output
         read_mag(mag_count);               // Read the x/y/z adc values
         // get_mag_resolution();
@@ -512,13 +645,38 @@ private:
         // Calculate the magnetometer values in milliGauss
         // Include factory calibration per data sheet and user environmental corrections
         // mag_bias is calcurated in 16BITS
-        float bias_to_current_bits = mag_resolution / get_mag_resolution(MAG_OUTPUT_BITS::M16BITS);
+        // float bias_to_current_bits = mag_resolution / get_mag_resolution(MAG_OUTPUT_BITS::M16BITS);
+        float bias_to_current_bits = mag_resolution / get_mag_resolution(setting.mag_output_bits);
+        // float bias_to_current_bits = 1.0;
         m[0] = (float)(mag_count[0] * mag_resolution * mag_bias_factory[0] - mag_bias[0] * bias_to_current_bits) * mag_scale[0];  // get actual magnetometer value, this depends on scale being set
         m[1] = (float)(mag_count[1] * mag_resolution * mag_bias_factory[1] - mag_bias[1] * bias_to_current_bits) * mag_scale[1];
         m[2] = (float)(mag_count[2] * mag_resolution * mag_bias_factory[2] - mag_bias[2] * bias_to_current_bits) * mag_scale[2];
+        // m[0] = -193.92;
+        // m[1] = 208.90;
+        // m[2] = 311.64;
+        // Serial.print(" mag_bias[0]: ");
+        // Serial.print(mag_bias[0]);
+        // Serial.print(" mag_bias[1]: ");
+        // Serial.print(mag_bias[1]);
+        // Serial.print(" mag_bias[2]: ");
+        // Serial.print(mag_bias[2]);
+
+        // Serial.print(" mag_resolution[2]: ");
+        // Serial.print(mag_resolution);
+
+        // Serial.print(" mag_bias[2]: ");
+        // Serial.print(mag_bias[2]);
+        
+        // Serial.print(" mx: ");
+        // Serial.print(m[0]);
+        // Serial.print(" my: ");
+        // Serial.print(m[1]);
+        // Serial.print(" mz: ");
+        // Serial.println(m[2]); 
     }
 
-    void read_mag(int16_t* destination) {
+    void read_mag(int16_t* destination) 
+    {
         uint8_t raw_data[7];                                                 // x/y/z gyro register data, ST2 register stored here, must read ST2 at end of data acquisition
         if (read_byte(AK8963_ADDRESS, AK8963_ST1) & 0x01) {                  // wait for magnetometer data ready bit to be set
             read_bytes(AK8963_ADDRESS, AK8963_XOUT_L, 7, &raw_data[0]);      // Read the six raw data and ST2 registers sequentially into data array
@@ -531,7 +689,8 @@ private:
         }
     }
 
-    int16_t read_temperature_data() {
+    int16_t read_temperature_data() 
+    {
         uint8_t raw_data[2];                                    // x/y/z gyro register data stored here
         read_bytes(mpu_i2c_addr, TEMP_OUT_H, 2, &raw_data[0]);  // Read the two raw data registers sequentially into data array
         return ((int16_t)raw_data[0] << 8) | raw_data[1];       // Turn the MSB and LSB into a 16-bit value
@@ -541,7 +700,8 @@ private:
     // of the at-rest readings and then loads the resulting offsets into accelerometer and gyro bias registers.
     // ACCEL_FS_SEL: 2g (maximum sensitivity)
     // GYRO_FS_SEL: 250dps (maximum sensitivity)
-    void calibrate_acc_gyro_impl() {
+    void calibrate_acc_gyro_impl() 
+    {
         set_acc_gyro_to_calibration();
         collect_acc_gyro_data_to(acc_bias, gyro_bias);
         write_accel_offset();
@@ -551,7 +711,8 @@ private:
         delay(1000);
     }
 
-    void set_acc_gyro_to_calibration() {
+    void set_acc_gyro_to_calibration() 
+    {
         // reset device
         write_byte(mpu_i2c_addr, PWR_MGMT_1, 0x80);  // Write a one to bit 7 reset bit; toggle reset device
         delay(100);
@@ -583,7 +744,8 @@ private:
         delay(40);                                  // accumulate 40 samples in 40 milliseconds = 480 bytes
     }
 
-    void collect_acc_gyro_data_to(float* a_bias, float* g_bias) {
+    void collect_acc_gyro_data_to(float* a_bias, float* g_bias) 
+    {
         // At end of sample accumulation, turn off FIFO sensor read
         uint8_t data[12];                                    // data array to hold accelerometer and gyro x, y, z, data
         write_byte(mpu_i2c_addr, FIFO_EN, 0x00);             // Disable gyro and accelerometer sensors for FIFO
@@ -623,7 +785,8 @@ private:
         }
     }
 
-    void write_accel_offset() {
+    void write_accel_offset() 
+    {
         // Construct the accelerometer biases for push to the hardware accelerometer bias registers. These registers contain
         // factory trim values which must be added to the calculated accelerometer biases; on boot up these registers will hold
         // non-zero values. In addition, bit 0 of the lower byte must be preserved since it is used for temperature
@@ -669,7 +832,8 @@ private:
         write_byte(mpu_i2c_addr, ZA_OFFSET_L, write_data[5]);
     }
 
-    void write_gyro_offset() {
+    void write_gyro_offset() 
+    {
         // Construct the gyro biases for push to the hardware gyro bias registers, which are reset to zero upon device startup
         uint8_t gyro_offset_data[6] {0};
         gyro_offset_data[0] = (-(int16_t)gyro_bias[0] / 4 >> 8) & 0xFF;  // Divide by 4 to get 32.9 LSB per deg/s to conform to expected bias input format
@@ -689,7 +853,8 @@ private:
     }
 
     // mag calibration is executed in MAG_OUTPUT_BITS: 16BITS
-    void calibrate_mag_impl() {
+    void calibrate_mag_impl() 
+    {
         // set MAG_OUTPUT_BITS to maximum to calibrate
         MAG_OUTPUT_BITS mag_output_bits_cache = setting.mag_output_bits;
         setting.mag_output_bits = MAG_OUTPUT_BITS::M16BITS;
@@ -720,7 +885,8 @@ private:
         initAK8963();
     }
 
-    void collect_mag_data_to(float* m_bias, float* m_scale) {
+    void collect_mag_data_to(float* m_bias, float* m_scale) 
+    {
         if (b_verbose)
             Serial.println("Mag Calibration: Wave device in a figure eight until done!");
         delay(4000);
@@ -893,7 +1059,8 @@ private:
         return b;
     }
 
-    float get_acc_resolution(const ACCEL_FS_SEL accel_af_sel) const {
+    float get_acc_resolution(const ACCEL_FS_SEL accel_af_sel) const 
+    {
         switch (accel_af_sel) {
             // Possible accelerometer scales (and their register bit settings) are:
             // 2 Gs (00), 4 Gs (01), 8 Gs (10), and 16 Gs  (11).
@@ -911,7 +1078,8 @@ private:
         }
     }
 
-    float get_gyro_resolution(const GYRO_FS_SEL gyro_fs_sel) const {
+    float get_gyro_resolution(const GYRO_FS_SEL gyro_fs_sel) const 
+    {
         switch (gyro_fs_sel) {
             // Possible gyro scales (and their register bit settings) are:
             // 250 DPS (00), 500 DPS (01), 1000 DPS (10), and 2000 DPS  (11).
@@ -929,7 +1097,8 @@ private:
         }
     }
 
-    float get_mag_resolution(const MAG_OUTPUT_BITS mag_output_bits) const {
+    float get_mag_resolution(const MAG_OUTPUT_BITS mag_output_bits) const 
+    {
         switch (mag_output_bits) {
             // Possible magnetometer scales (and their register bit settings) are:
             // 14 bit resolution (0) and 16 bit resolution (1)
@@ -943,7 +1112,8 @@ private:
         }
     }
 
-    void write_byte(uint8_t address, uint8_t subAddress, uint8_t data) {
+    void write_byte(uint8_t address, uint8_t subAddress, uint8_t data) 
+    {
         wire->beginTransmission(address);    // Initialize the Tx buffer
         wire->write(subAddress);             // Put slave register address in Tx buffer
         wire->write(data);                   // Put data in Tx buffer
@@ -951,7 +1121,8 @@ private:
         if (i2c_err_) print_i2c_error();
     }
 
-    uint8_t read_byte(uint8_t address, uint8_t subAddress) {
+    uint8_t read_byte(uint8_t address, uint8_t subAddress) 
+    {
         uint8_t data = 0;                         // `data` will store the register data
         wire->beginTransmission(address);         // Initialize the Tx buffer
         wire->write(subAddress);                  // Put slave register address in Tx buffer
@@ -962,7 +1133,8 @@ private:
         return data;                                 // Return data read from slave register
     }
 
-    void read_bytes(uint8_t address, uint8_t subAddress, uint8_t count, uint8_t* dest) {
+    void read_bytes(uint8_t address, uint8_t subAddress, uint8_t count, uint8_t* dest) 
+    {
         wire->beginTransmission(address);         // Initialize the Tx buffer
         wire->write(subAddress);                  // Put slave register address in Tx buffer
         i2c_err_ = wire->endTransmission(false);  // Send the Tx buffer, but send a restart to keep connection alive
@@ -974,7 +1146,8 @@ private:
         }  // Put read results in the Rx buffer
     }
 
-    void print_i2c_error() {
+    void print_i2c_error() 
+    {
         if (i2c_err_ == 7) return;  // to avoid stickbreaker-i2c branch's error code
         Serial.print("I2C ERROR CODE : ");
         Serial.println(i2c_err_);
