@@ -113,7 +113,8 @@ class MPU9250_ {
     float mag_bias[3] {0., 0., 0.};  // mag calibration value in MAG_OUTPUT_BITS: 16BITS
     float mag_scale[3] {1., 1., 1.};
     float magnetic_declination = +3.633;  // Italy , 25Th May 2021
-
+    // uint32_t timestamp_new, timestamp_old = {0};
+    uint32_t timestamp_new{0}, timestamp_old{0};
     int16_t mag_count[3] = {0, 0, 0};  // Stores the 16-bit signed magnetometer sensor output
 
 
@@ -227,13 +228,18 @@ public:
         return has_connected && (read_byte(mpu_i2c_addr, INT_STATUS) & 0x01);
     }
 
-    bool update() 
+    // 
+
+    // bool update(uint32_t timestamp_new)
+    bool update(uint32_t delay_micros) 
     {
         if (!available()) return false;
 
         update_accel_gyro();
         // update_mag();
         update_mag_em();
+        timestamp_old = timestamp_new;
+        timestamp_new = micros();
 
         // Madgwick function needs to be fed North, East, and Down direction like
         // (AN, AE, AD, GN, GE, GD, MN, ME, MD)
@@ -308,21 +314,107 @@ public:
                 md = +m[2];
                 break;
         }
+        // Serial.print("Time: "); Serial.println((timestamp_new - timestamp_old) - delay_micros);
+        // Serial.print("delay_micros: "); Serial.println(delay_micros);
+        quat_filter.update(an, ae, ad, gn, ge, gd, mn, me, md, q, (timestamp_new - timestamp_old) - delay_micros);
+
+        if (!b_ahrs) {
+            temperature_count = read_temperature_data();               // Read the adc values
+            temperature = ((float)temperature_count) / 333.87 + 21.0;  // Temperature in degrees Centigrade
+        } else {
+            update_euler(q[0], q[1], q[2], q[3]);
+        }
+        return true;
+    }
+
+    bool update() 
+    {
+        if (!available()) return false;
+
+        update_accel_gyro();
+        // update_mag();
+        update_mag_em();
+        timestamp_old = timestamp_new;
+        timestamp_new = micros();
+
+        // Madgwick function needs to be fed North, East, and Down direction like
+        // (AN, AE, AD, GN, GE, GD, MN, ME, MD)
+        // Accel and Gyro direction is Right-Hand, X-Forward, Z-Up
+        // Magneto direction is Right-Hand, Y-Forward, Z-Down
+        // So to adopt to the general Aircraft coordinate system (Right-Hand, X-Forward, Z-Down),
+        // we need to feed (ax, -ay, -az, gx, -gy, -gz, my, -mx, mz)
+        // but we pass (-ax, ay, az, gx, -gy, -gz, my, -mx, mz)
+        // because gravity is by convention positive down, we need to invert the accel data
+
+        // get quaternion based on aircraft coordinate (Right-Hand, X-Forward, Z-Down)
+        // acc[mg], gyro[deg/s], mag [mG]
+        // gyro will be convert from [deg/s] to [rad/s] inside of this function
+        // quat_filter.update(-a[0], a[1], a[2], g[0] * DEG_TO_RAD, -g[1] * DEG_TO_RAD, -g[2] * DEG_TO_RAD, m[1], -m[0], m[2], q);
+        // @hideakitai changed for new Madgwick filter calculation, please note that axes has changed from before
+
+        //NED
+        float an = 0.0;
+        float ae = 0.0;
+        float ad = 0.0;
+        float gn = 0.0;
+        float ge = 0.0;
+        float gd = 0.0;
+        float mn = 0.0;
+        float me = 0.0;
+        float md = 0.0;
         
-        Serial.print(" an: "); Serial.print(an);
-        Serial.print(" ae: "); Serial.print(ae);
-        Serial.print(" ad: "); Serial.print(ad);
-        Serial.print(" gn: "); Serial.print(gn);
-        Serial.print(" ge: "); Serial.print(ge);
-        Serial.print(" gd: "); Serial.print(gd);
-        Serial.print(" mn: "); Serial.print(mn);
-        Serial.print(" me: "); Serial.print(me);
-        Serial.print(" md: "); Serial.print(md);
-        Serial.print(" q[0]: "); Serial.print(q[0]);
-        Serial.print(" q[0]: "); Serial.print(q[1]);
-        Serial.print(" q[0]: "); Serial.print(q[2]);
-        Serial.print(" q[0]: "); Serial.println(q[3]);
-        quat_filter.update(an, ae, ad, gn, ge, gd, mn, me, md, q);
+        switch (setting.coord_ref_cfg)
+        {
+            case COORDINATE_REF::NED:
+                an = +a[0];
+                ae = -a[1];
+                ad = -a[2];
+                gn = +g[0] * DEG_TO_RAD;
+                ge = -g[1] * DEG_TO_RAD;
+                gd = -g[2] * DEG_TO_RAD;
+                mn = +m[1];
+                me = -m[0];
+                md = +m[2];
+                break;
+            case COORDINATE_REF::NEU:
+                an = +a[0];
+                ae = -a[1];
+                ad = +a[2];
+                gn = +g[0] * DEG_TO_RAD;
+                ge = -g[1] * DEG_TO_RAD;
+                gd = +g[2] * DEG_TO_RAD;
+                mn = +m[1];
+                me = -m[0];
+                md = -m[2];
+                break;
+            case COORDINATE_REF::NWU:
+                an = -a[0];
+                ae = +a[1];
+                ad = +a[2];
+                gn = +g[0] * DEG_TO_RAD;
+                ge = -g[1] * DEG_TO_RAD;
+                gd = -g[2] * DEG_TO_RAD;
+                mn = +m[1];
+                me = -m[0];
+                md = +m[2];
+                break;
+            default:
+                an = +a[0];
+                ae = -a[1];
+                ad = -a[2];
+                gn = +g[0] * DEG_TO_RAD;
+                ge = -g[1] * DEG_TO_RAD;
+                gd = -g[2] * DEG_TO_RAD;
+                mn = +m[1];
+                me = -m[0];
+                md = +m[2];
+                break;
+        }
+        Serial.print("Time: "); Serial.println((timestamp_new - timestamp_old) - 200000);
+        // quat_filter.update(an, ae, ad, gn, ge, gd, mn, me, md, q);
+        quat_filter.update(an, ae, ad, gn, ge, gd, mn, me, md, q, (timestamp_new - timestamp_old) - 200000);
+        // timestamp_old = timestamp_new;
+        // quat_filter.update(an, ae, ad, gn, ge, gd, mn, me, md, q, (5000));
 
         if (!b_ahrs) {
             temperature_count = read_temperature_data();               // Read the adc values
@@ -673,6 +765,7 @@ private:
     
     void update_mag_em() 
     {
+        // int16_t mag_count[3] = {0, 0, 0};  // Stores the 16-bit signed magnetometer sensor output
         read_mag(mag_count);               // Read the x/y/z adc values
         
         m[0] = ((float)mag_count[0] * mag_resolution * mag_bias_factory[0] - mag_bias[0]) * mag_scale[0];    // (rawMagX*ASAX*0.6 - magOffsetX)*scalefactor

@@ -1426,19 +1426,19 @@ void MadgwickQuaternionUpdate(float ax, float ay, float az, float gx, float gy, 
 void MahonyQuaternionUpdate(float ax, float ay, float az, float gx, float gy, float gz, float mx, float my, float mz)
 {
   float q1 = q[0], q2 = q[1], q3 = q[2], q4 = q[3];   // short name local variable for readability
-  Serial.print(" an: "); Serial.print(ax);
-  Serial.print(" ae: "); Serial.print(ay);
-  Serial.print(" ad: "); Serial.print(az);
-  Serial.print(" gn: "); Serial.print(gx);
-  Serial.print(" ge: "); Serial.print(gy);
-  Serial.print(" gd: "); Serial.print(gz);
-  Serial.print(" mn: "); Serial.print(mx);
-  Serial.print(" me: "); Serial.print(my);
-  Serial.print(" md: "); Serial.print(mz);
-  Serial.print(" q[0]: "); Serial.print(q[0]);
-  Serial.print(" q[0]: "); Serial.print(q[1]);
-  Serial.print(" q[0]: "); Serial.print(q[2]);
-  Serial.print(" q[0]: "); Serial.println(q[3]);
+  // Serial.print(" an: "); Serial.print(ax);
+  // Serial.print(" ae: "); Serial.print(ay);
+  // Serial.print(" ad: "); Serial.print(az);
+  // Serial.print(" gn: "); Serial.print(gx);
+  // Serial.print(" ge: "); Serial.print(gy);
+  // Serial.print(" gd: "); Serial.print(gz);
+  // Serial.print(" mn: "); Serial.print(mx);
+  // Serial.print(" me: "); Serial.print(my);
+  // Serial.print(" md: "); Serial.print(mz);
+  // Serial.print(" q[0]: "); Serial.print(q[0]);
+  // Serial.print(" q[0]: "); Serial.print(q[1]);
+  // Serial.print(" q[0]: "); Serial.print(q[2]);
+  // Serial.print(" q[0]: "); Serial.println(q[3]);
 
 
   float norm;

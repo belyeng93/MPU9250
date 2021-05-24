@@ -65,17 +65,13 @@
   Do NOT use this compass in situations involving safety to life such as navigation at sea.
 */
 
-#include <SPI.h>
 #include <Wire.h>
 #include "MPU9250.h"
 
-#if defined(ARDUINO_SAMD_ZERO) && defined(SERIAL_PORT_USBVIRTUAL)
-#define Serial SERIAL_PORT_USBVIRTUAL                               // Required for Serial on Zero based boards
-#endif
 
 // ----- configure 16x2 LCD display
 /* Comment-out the following line if you are not using a 16x2 LCD */
-#define LCD2
+// #define LCD2
 #define LCDParallel
 
 #ifdef LCD2
@@ -176,8 +172,7 @@ unsigned long Timer1 = 500000L;   // 500mS loop ... used when sending data to to
 unsigned long Stop1;              // Timer1 stops when micros() exceeds this value
 
 MPU9250 mpu;
-
-
+uint32_t timestamp{0};
 // -----------------
 // setup()
 // -----------------
@@ -185,7 +180,7 @@ void setup()
 {
   Wire.begin();
   Wire.setClock(400000);                            // 400 kbit/sec I2C speed
-  while (!Serial);                                  // required for Feather M4 Express
+  // while (!Serial);                                  // required for Feather M4 Express
   Serial.begin(115200);
 
   MPU9250Setting setting;
@@ -272,10 +267,11 @@ if (!mpu.setup(0x68, setting)) {  // change to your own address
   lcd.print(F("   Connection"));
 #endif
     
-  while (1) {
-    Serial.println("MPU connection failed. Please check your connection with `connection_check` example.");
-    delay(5000);
-  }
+  // while (1) {
+  //   yield();
+  //   Serial.println("MPU connection failed. Please check your connection with `connection_check` example.");
+  //   delay(5000);
+  // }
 }
 
 mpu.calibrateAccelGyro();
@@ -295,26 +291,8 @@ delay(2000);
 // ----------
 void loop()
 {
-  mpu.update();
-
-  // Serial.print(" ax: ");
-  // Serial.print(mpu.getAcc(0));
-  // Serial.print(" ay: ");
-  // Serial.print(mpu.getAcc(1));
-  // Serial.print(" az: ");
-  // Serial.print(mpu.getAcc(2));
-  // Serial.print(" gx: ");
-  // Serial.print(mpu.getGyro(0));
-  // Serial.print(" gy: ");
-  // Serial.print(mpu.getGyro(1));
-  // Serial.print(" gz: ");
-  // Serial.print(mpu.getGyro(2));
-  // Serial.print(" mx: ");
-  // Serial.print(mpu.getMag(0));
-  // Serial.print(" my: ");
-  // Serial.print(mpu.getMag(1));
-  // Serial.print(" mz: ");
-  // Serial.println(mpu.getMag(2));
+  // mpu.update(timestamp);
+  mpu.update(micros() - timestamp);
 
   // ----- Processing Tasks
   switch (TASK) {
@@ -354,6 +332,9 @@ void loop()
     // digitalWrite(myLed, !digitalRead(myLed));  // Toggle led
     count = millis();                          // Reset timer
   }
+
+  timestamp = micros();
+  delay(200);
 }
 
 
@@ -372,38 +353,38 @@ void view_heading_LCD()
   // roll  = mpu.getRoll();
   // yaw   = mpu.getYaw();
 
-  float pitch = mpu.getEulerX();
-  float roll  = mpu.getEulerY();
-  float yaw   = mpu.getEulerZ();
+  // float pitch = mpu.getEulerX();
+  // float roll  = mpu.getEulerY();
+  // float yaw   = mpu.getEulerZ();
 
 
-  // float yaw2 = atan2(2.0f * (mpu.getQuaternionX() * mpu.getQuaternionY() + mpu.getQuaternionW() * mpu.getQuaternionZ()), mpu.getQuaternionW() * mpu.getQuaternionW() + mpu.getQuaternionX() * mpu.getQuaternionX() - mpu.getQuaternionY() * mpu.getQuaternionY() - mpu.getQuaternionW() * mpu.getQuaternionW());
-  float q[4] = {mpu.getQuaternionW(), mpu.getQuaternionX(), mpu.getQuaternionY(), mpu.getQuaternionZ()};
-  float yaw2   = atan2(2.0f * (q[1] * q[2] + q[0] * q[3]), q[0] * q[0] + q[1] * q[1] - q[2] * q[2] - q[3] * q[3]);
+  // // float yaw2 = atan2(2.0f * (mpu.getQuaternionX() * mpu.getQuaternionY() + mpu.getQuaternionW() * mpu.getQuaternionZ()), mpu.getQuaternionW() * mpu.getQuaternionW() + mpu.getQuaternionX() * mpu.getQuaternionX() - mpu.getQuaternionY() * mpu.getQuaternionY() - mpu.getQuaternionW() * mpu.getQuaternionW());
+  // float q[4] = {mpu.getQuaternionW(), mpu.getQuaternionX(), mpu.getQuaternionY(), mpu.getQuaternionZ()};
+  // float yaw2   = atan2(2.0f * (q[1] * q[2] + q[0] * q[3]), q[0] * q[0] + q[1] * q[1] - q[2] * q[2] - q[3] * q[3]);
 
-  /*
-     The yaw and compass heading (after the next two lines) track each other 100%
-  */
-  yaw2 *= 180/3.14;
-  yaw2 += 3.633;
-  float heading = yaw2;
-  if (heading < 0) heading += 360.0;                        // Yaw goes negative between 180 amd 360 degrees
-  if (heading >= 360) heading -= 360.0;
+  // /*
+  //    The yaw and compass heading (after the next two lines) track each other 100%
+  // */
+  // yaw2 *= 180/3.14;
+  // yaw2 += 3.633;
+  // float heading = yaw2;
+  // if (heading < 0) heading += 360.0;                        // Yaw goes negative between 180 amd 360 degrees
+  // if (heading >= 360) heading -= 360.0;
 
   // ----- send the results to the Serial Monitor
-  Serial.print("        Pitch ");
-  print_number((short)pitch);
-  Serial.print("        Roll ");
-  print_number((short)roll);
-  Serial.print("        Heading ");
-  print_number((short)heading);
-  Serial.print("        HeadingM ");
+  // Serial.print("        Pitch ");
+  // print_number((short)pitch);
+  // Serial.print("        Roll ");
+  // print_number((short)roll);
+  // Serial.print("        Heading ");
+  // print_number((short)heading);
+  Serial.print("Heading ");
   print_number((short)mpu.getHeading());
 
   // ----- Print temperature in degrees Centigrade
   temperature = mpu.getTemperature();       // Temp in degrees C
-  Serial.print("        Temp(C) ");
-  Serial.print(temperature, 1);
+  // Serial.print("        Temp(C) ");
+  // Serial.print(temperature, 1);
 
 #ifdef LCD2
   lcd.clear();

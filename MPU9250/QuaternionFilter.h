@@ -53,6 +53,25 @@ public:
         }
     }
 
+    void update(float ax, float ay, float az, float gx, float gy, float gz, float mx, float my, float mz, float* q, uint32_t delta_t) {
+        deltaT = fabs(delta_t * 0.001 * 0.001);
+
+        switch (filter_sel) {
+            case QuatFilterSel::MADGWICK:
+                madgwick(ax, ay, az, gx, gy, gz, mx, my, mz, q);
+                break;
+            case QuatFilterSel::MAHONY:
+                mahony(ax, ay, az, gx, gy, gz, mx, my, mz, q);
+                break;
+            case QuatFilterSel::MAHONYEM:
+                MahonyQuaternionUpdate(ax, ay, az, gx, gy, gz, mx, my, mz, q);
+                break;
+            default:
+                no_filter(ax, ay, az, gx, gy, gz, mx, my, mz, q);
+                break;
+        }
+    }
+
     void no_filter(float ax, float ay, float az, float gx, float gy, float gz, float mx, float my, float mz, float* q) {
         float q0 = q[0], q1 = q[1], q2 = q[2], q3 = q[3];  // variable for readability
         q[0] += 0.5f * (-q1 * gx - q2 * gy - q3 * gz) * deltaT;
