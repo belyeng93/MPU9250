@@ -87,7 +87,7 @@ struct MPU9250Setting {
     GYRO_DLPF_CFG gyro_dlpf_cfg {GYRO_DLPF_CFG::DLPF_41HZ};
     uint8_t accel_fchoice {0x00};
     ACCEL_DLPF_CFG accel_dlpf_cfg {ACCEL_DLPF_CFG::DLPF_45HZ};
-    COORDINATE_REF coord_ref_cfg {COORDINATE_REF::NWU};
+    COORDINATE_REF coord_ref_cfg {COORDINATE_REF::NEU};
     M_MODE m_mode_cfg {M_MODE::M_8HZ};
 };
 
@@ -113,6 +113,9 @@ class MPU9250_ {
     float mag_bias[3] {0., 0., 0.};  // mag calibration value in MAG_OUTPUT_BITS: 16BITS
     float mag_scale[3] {1., 1., 1.};
     float magnetic_declination = +3.633;  // Italy , 25Th May 2021
+
+    int16_t mag_count[3] = {0, 0, 0};  // Stores the 16-bit signed magnetometer sensor output
+
 
     float heading = 0; // quaternion tilt compensated heading 
 
@@ -229,7 +232,8 @@ public:
         if (!available()) return false;
 
         update_accel_gyro();
-        update_mag();
+        // update_mag();
+        update_mag_em();
 
         // Madgwick function needs to be fed North, East, and Down direction like
         // (AN, AE, AD, GN, GE, GD, MN, ME, MD)
@@ -273,10 +277,10 @@ public:
             case COORDINATE_REF::NEU:
                 an = +a[0];
                 ae = -a[1];
-                ad = a[2];
+                ad = +a[2];
                 gn = +g[0] * DEG_TO_RAD;
                 ge = -g[1] * DEG_TO_RAD;
-                gd = g[2] * DEG_TO_RAD;
+                gd = +g[2] * DEG_TO_RAD;
                 mn = +m[1];
                 me = -m[0];
                 md = -m[2];
@@ -305,7 +309,19 @@ public:
                 break;
         }
         
-
+        Serial.print(" an: "); Serial.print(an);
+        Serial.print(" ae: "); Serial.print(ae);
+        Serial.print(" ad: "); Serial.print(ad);
+        Serial.print(" gn: "); Serial.print(gn);
+        Serial.print(" ge: "); Serial.print(ge);
+        Serial.print(" gd: "); Serial.print(gd);
+        Serial.print(" mn: "); Serial.print(mn);
+        Serial.print(" me: "); Serial.print(me);
+        Serial.print(" md: "); Serial.print(md);
+        Serial.print(" q[0]: "); Serial.print(q[0]);
+        Serial.print(" q[0]: "); Serial.print(q[1]);
+        Serial.print(" q[0]: "); Serial.print(q[2]);
+        Serial.print(" q[0]: "); Serial.println(q[3]);
         quat_filter.update(an, ae, ad, gn, ge, gd, mn, me, md, q);
 
         if (!b_ahrs) {
@@ -533,12 +549,12 @@ private:
         euler[1] *= 180.0f / PI;
         euler[2] *= 180.0f / PI;
 
-        Serial.print(" eulerx: ");
-        Serial.print(euler[0]);
-        Serial.print(" eulery: ");
-        Serial.print(euler[1]);
-        Serial.print(" eulerz: ");
-        Serial.println(euler[2]); 
+        // Serial.print(" eulerx: ");
+        // Serial.print(euler[0]);
+        // Serial.print(" eulery: ");
+        // Serial.print(euler[1]);
+        // Serial.print(" eulerz: ");
+        // Serial.println(euler[2]); 
 
         euler[2] += magnetic_declination;
 
@@ -638,7 +654,7 @@ private:
 
     void update_mag() 
     {
-        int16_t mag_count[3] = {0, 0, 0};  // Stores the 16-bit signed magnetometer sensor output
+        // int16_t mag_count[3] = {0, 0, 0};  // Stores the 16-bit signed magnetometer sensor output
         read_mag(mag_count);               // Read the x/y/z adc values
         // get_mag_resolution();
 
@@ -651,28 +667,34 @@ private:
         m[0] = (float)(mag_count[0] * mag_resolution * mag_bias_factory[0] - mag_bias[0] * bias_to_current_bits) * mag_scale[0];  // get actual magnetometer value, this depends on scale being set
         m[1] = (float)(mag_count[1] * mag_resolution * mag_bias_factory[1] - mag_bias[1] * bias_to_current_bits) * mag_scale[1];
         m[2] = (float)(mag_count[2] * mag_resolution * mag_bias_factory[2] - mag_bias[2] * bias_to_current_bits) * mag_scale[2];
-        // m[0] = -193.92;
-        // m[1] = 208.90;
-        // m[2] = 311.64;
-        // Serial.print(" mag_bias[0]: ");
-        // Serial.print(mag_bias[0]);
-        // Serial.print(" mag_bias[1]: ");
-        // Serial.print(mag_bias[1]);
-        // Serial.print(" mag_bias[2]: ");
-        // Serial.print(mag_bias[2]);
-
-        // Serial.print(" mag_resolution[2]: ");
-        // Serial.print(mag_resolution);
-
-        // Serial.print(" mag_bias[2]: ");
-        // Serial.print(mag_bias[2]);
         
-        // Serial.print(" mx: ");
-        // Serial.print(m[0]);
-        // Serial.print(" my: ");
-        // Serial.print(m[1]);
-        // Serial.print(" mz: ");
-        // Serial.println(m[2]); 
+
+    }
+    
+    void update_mag_em() 
+    {
+        read_mag(mag_count);               // Read the x/y/z adc values
+        
+        m[0] = ((float)mag_count[0] * mag_resolution * mag_bias_factory[0] - mag_bias[0]) * mag_scale[0];    // (rawMagX*ASAX*0.6 - magOffsetX)*scalefactor
+        m[1] = ((float)mag_count[1] * mag_resolution * mag_bias_factory[1] - mag_bias[1]) * mag_scale[1];    // (rawMagY*ASAY*0.6 - magOffsetY)*scalefactor
+        m[2] = ((float)mag_count[2] * mag_resolution * mag_bias_factory[2] - mag_bias[2]) * mag_scale[2]; 
+        // Serial.print(" mag_count[0]: "); Serial.print(mag_count[0]);
+        // Serial.print(" mag_count[1]: "); Serial.print(mag_count[1]);
+        // Serial.print(" mag_count[2]: "); Serial.print(mag_count[2]);
+
+        // Serial.print(" mag_resolution: "); Serial.print(mag_resolution);
+
+        // Serial.print(" mag_bias_factory[0]: "); Serial.print(mag_bias_factory[0]);
+        // Serial.print(" mag_bias_factory[1]: "); Serial.print(mag_bias_factory[1]);
+        // Serial.print(" mag_bias_factory[2]: "); Serial.print(mag_bias_factory[2]);
+
+        // Serial.print(" mag_bias[0]: "); Serial.print(mag_bias[0]);
+        // Serial.print(" mag_bias[1]: "); Serial.print(mag_bias[1]);
+        // Serial.print(" mag_bias[2]: "); Serial.print(mag_bias[2]);
+
+        // Serial.print(" mag_scale[0]: "); Serial.print(mag_scale[0]);
+        // Serial.print(" mag_scale[1]: "); Serial.print(mag_scale[1]);
+        // Serial.println(" mag_scale[2]: "); Serial.print(mag_scale[2]);
     }
 
     void read_mag(int16_t* destination) 

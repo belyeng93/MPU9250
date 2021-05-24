@@ -33,6 +33,7 @@ public:
     void update(float ax, float ay, float az, float gx, float gy, float gz, float mx, float my, float mz, float* q) {
         newTime = micros();
         deltaT = newTime - oldTime;
+        // deltaT = ((newTime - oldTime) / 1000000.0f);
         oldTime = newTime;
         deltaT = fabs(deltaT * 0.001 * 0.001);
 
@@ -44,7 +45,7 @@ public:
                 mahony(ax, ay, az, gx, gy, gz, mx, my, mz, q);
                 break;
             case QuatFilterSel::MAHONYEM:
-                mahony(ax, ay, az, gx, gy, gz, mx, my, mz, q);
+                MahonyQuaternionUpdate(ax, ay, az, gx, gy, gz, mx, my, mz, q);
                 break;
             default:
                 no_filter(ax, ay, az, gx, gy, gz, mx, my, mz, q);

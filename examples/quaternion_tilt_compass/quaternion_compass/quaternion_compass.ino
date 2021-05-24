@@ -1426,6 +1426,21 @@ void MadgwickQuaternionUpdate(float ax, float ay, float az, float gx, float gy, 
 void MahonyQuaternionUpdate(float ax, float ay, float az, float gx, float gy, float gz, float mx, float my, float mz)
 {
   float q1 = q[0], q2 = q[1], q3 = q[2], q4 = q[3];   // short name local variable for readability
+  Serial.print(" an: "); Serial.print(ax);
+  Serial.print(" ae: "); Serial.print(ay);
+  Serial.print(" ad: "); Serial.print(az);
+  Serial.print(" gn: "); Serial.print(gx);
+  Serial.print(" ge: "); Serial.print(gy);
+  Serial.print(" gd: "); Serial.print(gz);
+  Serial.print(" mn: "); Serial.print(mx);
+  Serial.print(" me: "); Serial.print(my);
+  Serial.print(" md: "); Serial.print(mz);
+  Serial.print(" q[0]: "); Serial.print(q[0]);
+  Serial.print(" q[0]: "); Serial.print(q[1]);
+  Serial.print(" q[0]: "); Serial.print(q[2]);
+  Serial.print(" q[0]: "); Serial.println(q[3]);
+
+
   float norm;
   float hx, hy, bx, bz;
   float vx, vy, vz, wx, wy, wz;
@@ -1584,9 +1599,23 @@ void refresh_data()
     my = ((float)magCount[1] * mRes * magCalibration[1] - magBias[1]) * magScale[1];    // (rawMagY*ASAY*0.6 - magOffsetY)*scalefactor
     mz = ((float)magCount[2] * mRes * magCalibration[2] - magBias[2]) * magScale[2];
     
-    // Serial.print(" magCalibration[0]: ");
-    // Serial.println(magCalibration[0]);
-  
+    // Serial.print(" magCount[0]: "); Serial.print(magCount[0]);
+    // Serial.print(" magCount[1]: "); Serial.print(magCount[1]);
+    // Serial.print(" magCount[2]: "); Serial.print(magCount[2]);
+
+    // Serial.print(" mRes: "); Serial.print(mRes);
+
+    // Serial.print(" magCalibration[0]: "); Serial.print(magCalibration[0]);
+    // Serial.print(" magCalibration[1]: "); Serial.print(magCalibration[1]);
+    // Serial.print(" magCalibration[2]: "); Serial.print(magCalibration[2]);
+
+    // Serial.print(" magBias[0]: "); Serial.print(magBias[0]);
+    // Serial.print(" magBias[1]: "); Serial.print(magBias[1]);
+    // Serial.print(" magBias[2]: "); Serial.print(magBias[2]);
+
+    // Serial.print(" magScale[0]: "); Serial.print(magScale[0]);
+    // Serial.print(" magScale[1]: "); Serial.print(magScale[1]);
+    // Serial.println(" magScale[2]: "); Serial.print(magScale[2]);
 
     // Serial.print(" mx: ");
     // Serial.print(mx);
@@ -1868,12 +1897,12 @@ void view_heading_LCD()
   roll *= RAD_TO_DEG;
   yaw *= RAD_TO_DEG;
   
-  Serial.print(" eulerx: ");
-  Serial.print(roll);
-  Serial.print(" eulery: ");
-  Serial.print(pitch);
-  Serial.print(" eulerz: ");
-  Serial.println(yaw); 
+  // Serial.print(" eulerx: ");
+  // Serial.print(roll);
+  // Serial.print(" eulery: ");
+  // Serial.print(pitch);
+  // Serial.print(" eulerz: ");
+  // Serial.println(yaw); 
 
   // ----- calculate the heading
   /*
