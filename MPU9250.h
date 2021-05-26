@@ -316,8 +316,10 @@ public:
         }
         // Serial.print("Time: "); Serial.println((timestamp_new - timestamp_old) - delay_micros);
         // Serial.print("delay_micros: "); Serial.println(delay_micros);
+        // int32_t start = millis();
         quat_filter.update(an, ae, ad, gn, ge, gd, mn, me, md, q, (timestamp_new - timestamp_old) - delay_micros);
-
+        // Serial.print("Time: ");
+        // Serial.println(millis() - start);
         if (!b_ahrs) {
             temperature_count = read_temperature_data();               // Read the adc values
             temperature = ((float)temperature_count) / 333.87 + 21.0;  // Temperature in degrees Centigrade
@@ -410,7 +412,7 @@ public:
                 md = +m[2];
                 break;
         }
-        Serial.print("Time: "); Serial.println((timestamp_new - timestamp_old) - 200000);
+        // Serial.print("Time: ");// Serial.println((timestamp_new - timestamp_old) - 200000);
         // quat_filter.update(an, ae, ad, gn, ge, gd, mn, me, md, q);
         quat_filter.update(an, ae, ad, gn, ge, gd, mn, me, md, q, (timestamp_new - timestamp_old) - 200000);
         // timestamp_old = timestamp_new;

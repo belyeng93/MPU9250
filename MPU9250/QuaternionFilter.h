@@ -18,7 +18,8 @@ class QuaternionFilter {
     float eInt[3] = {0.0f, 0.0f, 0.0f};                 // vector to hold integral error for Mahony method
 
     // for mahony
-    float Kp = 40.0;
+    float Kp = 500.0;
+    // float Kp = 40.0;
     float Ki = 0.0;
 
     QuatFilterSel filter_sel{QuatFilterSel::MADGWICK};

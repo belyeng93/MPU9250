@@ -215,12 +215,13 @@ timestamp = micros();
 void loop()
 {
   // mpu.update(timestamp);
-  if(mpu.update(micros() - timestamp))
+  int32_t delay_time = micros() - timestamp;
+  if(mpu.update(delay_time))
   {
     printHeading();
   }
   timestamp = micros();
-  delay(200);
+  // delay(200);
 }
 
 
