@@ -336,9 +336,6 @@ public:
         update_accel_gyro();
         // update_mag();
         update_mag_em();
-        timestamp_old = timestamp_new;
-        timestamp_new = micros();
-
         // Madgwick function needs to be fed North, East, and Down direction like
         // (AN, AE, AD, GN, GE, GD, MN, ME, MD)
         // Accel and Gyro direction is Right-Hand, X-Forward, Z-Up
@@ -414,9 +411,9 @@ public:
         }
         // Serial.print("Time: ");// Serial.println((timestamp_new - timestamp_old) - 200000);
         // quat_filter.update(an, ae, ad, gn, ge, gd, mn, me, md, q);
-        quat_filter.update(an, ae, ad, gn, ge, gd, mn, me, md, q, (timestamp_new - timestamp_old) - 200000);
+        // quat_filter.update(an, ae, ad, gn, ge, gd, mn, me, md, q, (timestamp_new - timestamp_old) - 200000);
         // timestamp_old = timestamp_new;
-        // quat_filter.update(an, ae, ad, gn, ge, gd, mn, me, md, q, (5000));
+        quat_filter.update(an, ae, ad, gn, ge, gd, mn, me, md, q);
 
         if (!b_ahrs) {
             temperature_count = read_temperature_data();               // Read the adc values

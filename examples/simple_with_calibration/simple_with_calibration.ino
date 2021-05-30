@@ -8,10 +8,10 @@ void setup() {
     delay(2000);
 
     if (!mpu.setup(0x68)) {  // change to your own address
-        while (1) {
-            Serial.println("MPU connection failed. Please check your connection with `connection_check` example.");
-            delay(5000);
-        }
+        // while (1) {
+        Serial.println("MPU connection failed. Please check your connection with `connection_check` example.");
+        //     delay(5000);
+        // }
     }
 
     // calibrate anytime you want to
@@ -34,7 +34,8 @@ void loop() {
     if (mpu.update()) {
         static uint32_t prev_ms = millis();
         if (millis() > prev_ms + 25) {
-            print_roll_pitch_yaw();
+            Serial.print("Heading ");
+            Serial.println((int) mpu.getHeading());
             prev_ms = millis();
         }
     }

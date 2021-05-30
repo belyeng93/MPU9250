@@ -140,26 +140,26 @@ LiquidCrystal_I2C lcd(0x27, 2, 1, 0, 4, 5, 6, 7, 3, POSITIVE);    // LCD pinouts
 
 // ----- NZ offsets & scale-factors (TASK 2 ... 2nd run)
 
-// float
-// Mag_x_offset = 366.695,
-// Mag_y_offset = 386.56,
-// Mag_z_offset = -380.47,
-// Mag_x_scale = 1.0603912,
-// Mag_y_scale = 0.9851133,
-// Mag_z_scale = 0.9598401;
+float
+Mag_x_offset = 366.695,
+Mag_y_offset = 386.56,
+Mag_z_offset = -380.47,
+Mag_x_scale = 1.0603912,
+Mag_y_scale = 0.9851133,
+Mag_z_scale = 0.9598401;
 unsigned long delt_t = 0;                           // used to control display output rate
 unsigned long count = 0, sumCount = 0;              // used to control display output rate
 float pitch, roll, yaw;
 float temperature;                                  // Stores the real internal chip temperature in degrees Celsius
 float deltat = 0.0f, sum = 0.0f;                    // integration interval for both filter schemes
 
-float
-Mag_x_offset = 366.695,
-Mag_y_offset = 376.02,
-Mag_z_offset = -397.455,
-Mag_x_scale = 1.0184643,
-Mag_y_scale = 0.97450244,
-Mag_z_scale = 1.0081002;
+// float
+// Mag_x_offset = 366.695,
+// Mag_y_offset = 376.02,
+// Mag_z_offset = -397.455,
+// Mag_x_scale = 1.0184643,
+// Mag_y_scale = 0.97450244,
+// Mag_z_scale = 1.0081002;
 
 
 // ----- Processing variables
@@ -258,31 +258,43 @@ void setup()
   }
 #endif
 
-if (!mpu.setup(0x68, setting)) {  // change to your own address
-#ifdef LCD2
-  lcd.clear();
-  lcd.setCursor(0, 0);
-  lcd.print(F("Error I2C Check"));
-  lcd.setCursor(0, 1);
-  lcd.print(F("   Connection"));
-#endif
-    
-  // while (1) {
-  //   yield();
-  //   Serial.println("MPU connection failed. Please check your connection with `connection_check` example.");
-  //   delay(5000);
-  // }
-}
+  if (!mpu.setup(0x68, setting)) 
+  {  // change to your own address
+  #ifdef LCD2
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print(F("Error I2C Check"));
+    lcd.setCursor(0, 1);
+    lcd.print(F("   Connection"));
+  #endif
+      
+    // while (1) {
+    //   yield();
+    Serial.println("MPU connection failed. Please check your connection with `connection_check` example.");
+    //   delay(5000);
+    // }
+  }
+  Serial.println("Accel Gyro calibration will start in 5sec.");
+  Serial.println("Please leave the device still on the flat plane.");
+  mpu.verbose(true);
+  delay(2000);
+  Serial.println("START ACCEL");
+  mpu.calibrateAccelGyro();
 
-mpu.calibrateAccelGyro();
-// mpu.setMagneticDeclination(3.633);
-mpu.setMagBias(Mag_x_offset, Mag_y_offset, Mag_z_offset);
-mpu.setMagScale(Mag_x_scale, Mag_y_scale, Mag_z_scale);
+  // Serial.println("Mag calibration will start in 5sec.");
+  // Serial.println("Please Wave device in a figure eight until done.");
+  // delay(5000);
+  // Serial.println("START MAG CALIB");
+  // mpu.calibrateMag();
 
-mpu.selectFilter(QuatFilterSel::MAHONYEM);
+  // mpu.setMagneticDeclination(3.633);
+  mpu.setMagBias(Mag_x_offset, Mag_y_offset, Mag_z_offset);
+  mpu.setMagScale(Mag_x_scale, Mag_y_scale, Mag_z_scale);
 
-print_calibration();
-delay(2000);
+  mpu.selectFilter(QuatFilterSel::MAHONYEM);
+
+  print_calibration();
+  delay(2000);
 
 }
 
@@ -292,7 +304,8 @@ delay(2000);
 void loop()
 {
   // mpu.update(timestamp);
-  mpu.update(micros() - timestamp);
+  // mpu.update(micros() - timestamp);
+  mpu.update();
 
   // ----- Processing Tasks
   switch (TASK) {
@@ -334,7 +347,7 @@ void loop()
   }
 
   timestamp = micros();
-  delay(200);
+  // delay(200);
 }
 
 
@@ -379,7 +392,8 @@ void view_heading_LCD()
   // Serial.print("        Heading ");
   // print_number((short)heading);
   Serial.print("Heading ");
-  print_number((short)mpu.getHeading());
+  Serial.println((int)mpu.getHeading() - 32);
+  // print_number((short)mpu.getHeading() - 32);
 
   // ----- Print temperature in degrees Centigrade
   temperature = mpu.getTemperature();       // Temp in degrees C

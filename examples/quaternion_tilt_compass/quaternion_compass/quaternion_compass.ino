@@ -74,7 +74,7 @@
 
 // ----- configure 16x2 LCD display
 /* Comment-out the following line if you are not using a 16x2 LCD */
-#define LCD2
+// #define LCD2
 #define LCDParallel
 
 #ifdef LCD2
@@ -111,7 +111,7 @@ const int pin_BL = 10;
   #define TASK 6    // View ... pitch, roll, and compass-heading on 16x2 LCD display
 */
 
-#define TASK 6
+#define TASK 3
 
 // ----- user offsets and scale-factors
 /*
@@ -154,23 +154,23 @@ const int pin_BL = 10;
 // Mag_y_scale = 0.9851133,
 // Mag_z_scale = 0.9598401;
 
-float
-Mag_x_offset = 366.695,
-Mag_y_offset = 376.02,
-Mag_z_offset = -397.455,
-Mag_x_scale = 1.0184643,
-Mag_y_scale = 0.97450244,
-Mag_z_scale = 1.0081002;
-
-
-
 // float
-// Mag_x_offset = 0.0,
-// Mag_y_offset = 0.0,
-// Mag_z_offset = 0.0,
-// Mag_x_scale = 1.0,
-// Mag_y_scale = 1.0,
-// Mag_z_scale = 1.0;
+// Mag_x_offset = 366.695,
+// Mag_y_offset = 376.02,
+// Mag_z_offset = -397.455,
+// Mag_x_scale = 1.0184643,
+// Mag_y_scale = 0.97450244,
+// Mag_z_scale = 1.0081002;
+
+
+
+float
+Mag_x_offset = 0.0,
+Mag_y_offset = 0.0,
+Mag_z_offset = 0.0,
+Mag_x_scale = 1.0,
+Mag_y_scale = 1.0,
+Mag_z_scale = 1.0;
 
 
 
