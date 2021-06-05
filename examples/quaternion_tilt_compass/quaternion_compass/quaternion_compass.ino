@@ -111,7 +111,7 @@ const int pin_BL = 10;
   #define TASK 6    // View ... pitch, roll, and compass-heading on 16x2 LCD display
 */
 
-#define TASK 3
+#define TASK 2
 
 // ----- user offsets and scale-factors
 /*
@@ -445,7 +445,7 @@ void setup()
 {
   Wire.begin();
   Wire.setClock(400000);                            // 400 kbit/sec I2C speed
-  while (!Serial);                                  // required for Feather M4 Express
+  // while (!Serial);                                  // required for Feather M4 Express
   Serial.begin(115200);
 
   // ----- Set up the interrupt pin, its set as active high, push-pull
@@ -671,7 +671,7 @@ void setup()
     Serial.println(F(";"));
 
     // ----- Halt program
-    while (true);
+    // while (true);
   }
 }
 
